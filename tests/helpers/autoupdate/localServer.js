@@ -51,20 +51,25 @@ export function setUpLocalServer(mainPath, parentPath) {
             reject = promiseReject;
             localServer = new LocalServer({
                 log: {
-                    warn() {
+                    warn(...args) {
+                        console.log(...args);
                     },
-                    info() {
+                    info(...args) {
+                        console.log(...args);
                     }
+                },
+                skeletonApp: {
+                    userDataDir: __dirname
                 }
             });
-            localServer.setCallbacks(() => reject(), onServerReady, () => resolve());
+            localServer.setCallbacks(() => reject(), onServerReady, onServerReady);
             localServer.init(assetBundle, '', false, false);
         });
     }
     return new Promise((promiseResolve, promiseReject) => {
         resolve = promiseResolve;
         reject = promiseReject;
-        localServer.setCallbacks(() => reject(), onServerReady, () => resolve());
+        localServer.setCallbacks(() => reject(), onServerReady, onServerReady);
         localServer.init(assetBundle, '', true, false);
     });
 }

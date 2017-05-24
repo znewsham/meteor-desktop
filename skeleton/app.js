@@ -22,7 +22,7 @@ const { join } = path;
  * Here all the plugins/modules are loaded, local server is spawned and autoupdate is initialized.
  * @class
  */
-class App {
+export default class App {
 
     constructor() {
         // Until user defined handling will be loaded it is good to register something
@@ -47,9 +47,11 @@ class App {
             this.l.debug(`skeleton version ${this.settings.meteorDesktopVersion}`);
         }
 
-        // To make desktop.asar's downloaded through HCP work, we need to provide them a path to
+        // To make desktop.asar's downloaded through HCP work, we need to provide it a path to
         // node_modules.
         const nodeModulesPath = [__dirname, 'node_modules'];
+
+        // TODO: explain this
         if (!this.isProduction()) {
             nodeModulesPath.splice(1, 0, '..');
         }
@@ -60,7 +62,7 @@ class App {
             return;
         }
 
-        // This is need for OSX - check Electron docs for more info.
+        // This is needed for OSX - check Electron docs for more info.
         if ('builderOptions' in this.settings && this.settings.builderOptions.appId) {
             app.setAppUserModelId(this.settings.builderOptions.appId);
         }
@@ -375,6 +377,41 @@ class App {
     }
 
     /**
+     * Checks wheteher object seems to be a promise.
+     * @param {Object} obj
+     * @returns {boolean}
+     */
+    static isPromise(obj) {
+        return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+    }
+
+    /**
+     * Util function for emitting events synchronously and waiting asynchronously for
+     * handlers to finish.
+     * @param {string} event - event name
+     * @param {[*]}    args  - event's arguments
+     */
+    emitAsync(event, ...args) {
+        const promises = [];
+
+        //try {
+            this.eventsBus.listeners(event).forEach((handler) => {
+                const result = handler(...args);
+                if (App.isPromise(result)) {
+                    promises.push(result);
+                } else {
+                    promises.push(Promise.resolve());
+                }
+            });
+        /*} catch (e) {
+            this.l.error(`error while emitting '${event}' event: ${e}`);
+            return Promise.reject(e);
+        }*/
+        return Promise.all(promises);
+    }
+
+
+    /**
      * Initializes this app.
      * Loads plugins.
      * Loads modules.
@@ -420,9 +457,14 @@ class App {
      * @param {number} port - port on which the app is served
      */
     onServerRestarted(port) {
-        this.emit('beforeLoadUrl', port, this.currentPort);
-        this.currentPort = port;
-        this.webContents.loadURL(`http://127.0.0.1:${port}/`);
+        this.emitAsync('beforeLoadUrl', port, this.currentPort)
+            .catch(() => {
+                this.l.warning('some of beforeLoadUrl event listeners have failed');
+            })
+            .then(() => {
+                this.currentPort = port;
+                this.webContents.loadURL(`http://127.0.0.1:${port}/`);
+            });
     }
 
     /**
@@ -519,8 +561,13 @@ class App {
             this.handleAppStartup(false);
         });
 
-        this.emit('beforeLoadUrl', port, this.currentPort);
-        this.webContents.loadURL(`http://127.0.0.1:${port}/`);
+        this.emitAsync('beforeLoadUrl', port, this.currentPort)
+            .catch(() => {
+                this.l.warning('some of beforeLoadUrl event listeners have failed');
+            })
+            .then(() => {
+                this.webContents.loadURL(`http://127.0.0.1:${port}/`);
+            });
     }
 
     handleAppStartup(startupDidCompleteEvent) {
@@ -586,4 +633,6 @@ class App {
     }
 }
 
-const appInstance = new App(); // eslint-disable-line no-unused-vars
+if (!process.env.METEOR_DESKTOP_UNIT_TEST) {
+    const appInstance = new App(); // eslint-disable-line no-unused-vars
+}

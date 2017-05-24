@@ -20,7 +20,7 @@ const oneYearInSeconds = 60 * 60 * 24 * 365;
  */
 export default class LocalServer {
 
-    constructor({ log, settings = { localFilesystem: false } }) {
+    constructor({ log, settings = { localFilesystem: false }, skeletonApp }) {
         this.log = log;
         this.httpServerInstance = null;
         this.server = null;
@@ -28,6 +28,8 @@ export default class LocalServer {
         this.maxRetries = 3;
         this.serverPath = '';
         this.parentServerPath = '';
+        this.portRange = [57200, 57400];
+        this.portSearchStep = 20;
 
         this.errors = [];
         this.errors[0] = 'Could not find free port.';
@@ -36,6 +38,10 @@ export default class LocalServer {
         this.localFilesystemUrl = '/local-filesystem/';
         this.desktopAssetsUrl = '/___desktop/';
         this.settings = settings;
+
+        this.portFilePath = path.join(skeletonApp.userDataDir, 'port.cfg');
+
+        this.lastUsedPort = this.loadPort();
     }
 
     /**
@@ -57,10 +63,8 @@ export default class LocalServer {
      * @param {AssetBundle} assetBundle - asset bundle from the autoupdate
      * @param {string} desktopPath      - path to desktop.asar
      * @param {boolean} restart         - are we restarting the server?
-     * @param {boolean} randomPort      - whether to choose a random port from those found
-     *                                    to be free
      */
-    init(assetBundle, desktopPath, restart, randomPort = true) {
+    init(assetBundle, desktopPath, restart) {
         // `connect` will do the job!
         const self = this;
         const server = connect();
@@ -147,7 +151,7 @@ export default class LocalServer {
             return asset ?
                 send(req, encodeURIComponent(asset.getFile()), { etag: false, cacheControl: false })
                     .on('file', () =>
-                        addSourceMapHeader(asset, res),
+                            addSourceMapHeader(asset, res),
                         addETagHeader(asset, res),
                         addCacheHeader(asset, res, req.url)
                     )
@@ -269,7 +273,7 @@ export default class LocalServer {
 
         this.server = server;
 
-        this.findPort(randomPort)
+        this.findPort()
             .then(() => {
                 this.startHttpServer(restart);
             })
@@ -280,31 +284,106 @@ export default class LocalServer {
     }
 
     /**
-     * Checks if we have a free port.
+     * Checks for a free port in a given port range.
+     * @param {number} startPort - port range start
+     * @param {number} stopPort  - port range end
      * @returns {Promise}
      */
-    findPort(randomPort) {
+    static findFreePortInRange(startPort, stopPort) {
         return new Promise((resolve, reject) => {
             findPort(
                 '127.0.0.1',
-                8034,
-                8063,
+                startPort,
+                stopPort,
                 (ports) => {
                     if (ports.length === 0) {
                         reject();
-                    }
-
-                    if (randomPort) {
-                        this.port = ports[Math.floor(Math.random() * (ports.length - 1))];
                     } else {
-                        this.port = ports[0];
+                        const port = ports[Math.floor(Math.random() * (ports.length - 1))];
+                        resolve(port);
                     }
-
-                    this.log.info(`assigned port ${this.port}`);
-                    resolve();
                 }
             );
         });
+    }
+
+    /**
+     * Looks for a free port to reserve for the local server.
+     * @returns {Promise}
+     */
+    findPort() {
+        const self = this;
+        let startPort;
+        let endPort;
+
+        if (this.lastUsedPort !== null) {
+            startPort = this.lastUsedPort;
+            endPort = this.lastUsedPort;
+        } else {
+            startPort = this.portRange[0];
+            endPort = this.portRange[0] + this.portSearchStep;
+        }
+
+        return new Promise((resolve, reject) => {
+            function success(port) {
+                self.port = port;
+                self.log.info(`assigned port ${self.port}`);
+                resolve();
+            }
+
+            function fail() {
+                if (startPort === self.lastUsedPort && endPort === startPort) {
+                    startPort = self.portRange[0];
+                    endPort = self.portRange[0] + self.portSearchStep;
+                } else {
+                    startPort += self.portSearchStep;
+                    endPort += self.portSearchStep;
+                }
+
+                if (startPort === self.portRange[1]) {
+                    reject();
+                } else {
+                    find(); // eslint-disable-line no-use-before-define
+                }
+            }
+
+            function find() {
+                LocalServer.findFreePortInRange(startPort, endPort)
+                    .then(success)
+                    .catch(fail);
+            }
+
+            find();
+        });
+    }
+
+    /**
+     * Loads the last used port number.
+     * @returns {null|number}
+     */
+    loadPort() {
+        let port = null;
+        try {
+            port = parseInt(fs.readFileSync(this.portFilePath, this.port), 10);
+        } catch (e) {
+            // No harm in that.
+        }
+        if (port < this.portRange[0] && port > this.portRange[1]) {
+            return null;
+        }
+        this.log.info(`last used port is ${port}`);
+        return port;
+    }
+
+    /**
+     * Save the currently used port so that it will be reused on the next start.
+     */
+    savePort() {
+        try {
+            fs.writeFileSync(this.portFilePath, this.port);
+        } catch (e) {
+            // No harm in that.
+        }
     }
 
     /**
@@ -325,6 +404,7 @@ export default class LocalServer {
             });
             this.httpServerInstance.on('listening', () => {
                 this.retries = 0;
+                this.savePort();
                 if (restart) {
                     this.onServerRestarted(this.port);
                 } else {
@@ -340,4 +420,5 @@ export default class LocalServer {
     }
 }
 
-module.exports = LocalServer;
+module
+    .exports = LocalServer;

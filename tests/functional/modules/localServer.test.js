@@ -30,8 +30,10 @@ function getLocalServer(bundlePath, settings) {
     return new Promise((resolve, reject) => {
         const localServer = new LocalServer({
             log: fakeLogger,
-            settings
-
+            settings,
+            skeletonApp: {
+                userDataDir: __dirname
+            }
         });
         function onStartupFailed() {
             reject();
