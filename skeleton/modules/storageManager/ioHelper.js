@@ -10,13 +10,14 @@ import fsExtra from 'fs-extra';
  */
 export function findNewestFileOrDirectory(path, condition = () => true) {
     let maxMTime = 0;
-    let files = [];
-    const returnValue = { files, newest: null };
+    const returnValue = { entries: [], newest: null };
 
+    console.log('checking ', path);
     if (fs.existsSync(path)) {
-        files = shelljs.ls('-l', this.localStoragePath);
-
+        const files = shelljs.ls('-l', path);
+        returnValue.entries = files;
         files.forEach((file) => {
+            console.log(file.name, condition(file));
             if (condition(file) && file.mtime.getTime() > maxMTime) {
                 maxMTime = file.mtime.getTime();
                 returnValue.newest = file.name;
@@ -26,9 +27,9 @@ export function findNewestFileOrDirectory(path, condition = () => true) {
     return returnValue;
 }
 
-export function rimrafPromisfied(filePath) {
+export function rimrafPromisfied(path) {
     return new Promise((resolve, reject) => {
-        rimraf(filePath, {}, (error) => {
+        rimraf(path, {}, (error) => {
             if (error) {
                 reject(error);
             } else {
@@ -38,7 +39,7 @@ export function rimrafPromisfied(filePath) {
     });
 }
 
-export function removeFiles(paths = [], deleteFunction) {
+export function removePaths(paths = [], deleteFunction) {
     const rimrafPromises = [];
     paths.forEach((filePath) => {
         if (fs.existsSync(filePath)) {
@@ -77,7 +78,9 @@ export function ioOperationWithRetries(operation, maxRetries = 5, delayMs = 100,
     });
 }
 
-export function batchIoOperationWithRetries(operation, maxRetries, delayMs, operationFunction, opertionArgs = []) {
+export function batchIoOperationWithRetries(
+    operation, maxRetries, delayMs, operationFunction, opertionArgs = []
+) {
     const ioPromises = [];
     opertionArgs.forEach((args) => {
         ioPromises.push(operationFunction(operation, maxRetries, delayMs, ...args));

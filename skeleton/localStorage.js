@@ -15,7 +15,7 @@ import rimraf from 'rimraf';
  *
  * @constructor
  */
-export default class LocalStorage {
+export default class LocalStorageLol {
 
     constructor({ log, eventsBus }) {
         const appPath = app.getPath('userData');

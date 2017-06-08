@@ -362,6 +362,7 @@ export default class LocalServer {
      * @returns {null|number}
      */
     loadPort() {
+        return null;
         let port = null;
         try {
             port = parseInt(fs.readFileSync(this.portFilePath, this.port), 10);

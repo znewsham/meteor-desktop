@@ -44,7 +44,7 @@ describe('ioHelper', () => {
     describe('#findNewestFileOrDirectory', () => {
         it('should return empty array for non existing path', () => {
             fs.existsSync = () => false;
-            expect(ioHelper.findNewestFileOrDirectory('/dummy/path').files).to.deep.equal([]);
+            expect(ioHelper.findNewestFileOrDirectory('/dummy/path').entries).to.deep.equal([]);
             expect(ioHelper.findNewestFileOrDirectory('/dummy/path').newest).to.be.null();
             delete fs.existsSync;
         });
@@ -88,15 +88,15 @@ describe('ioHelper', () => {
     describe('#removeFilesIfPresent', () => {
         it('should resolve when no file exists', () => {
             fs.existsSync = () => false;
-            return expect(ioHelper.removeFiles(['file1'])).to.be.fulfilled();
+            return expect(ioHelper.removePaths(['file1'])).to.be.fulfilled();
         });
         it('should resolve when delete function resolves', () => {
             fs.existsSync = () => true;
-            return expect(ioHelper.removeFiles(['file1'], () => Promise.resolve())).to.be.fulfilled();
+            return expect(ioHelper.removePaths(['file1'], () => Promise.resolve())).to.be.fulfilled();
         });
         it('should reject when delete function rejects', () => {
             fs.existsSync = () => true;
-            return expect(ioHelper.removeFiles(['file1'], () => Promise.reject())).to.be.rejected();
+            return expect(ioHelper.removePaths(['file1'], () => Promise.reject())).to.be.rejected();
         });
     });
     describe('#ioOperationWithRetries', () => {
