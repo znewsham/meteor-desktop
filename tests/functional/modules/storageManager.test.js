@@ -15,7 +15,7 @@ chai.use(dirty);
 const { describe, it } = global;
 const { expect } = chai;
 
-const Electron = { app: { getPath: () => paths.storagesPath}};
+const Electron = { app: { getPath: () => paths.storagesPath }};
 
 let StorageManager;
 describe('storageManager', () => {
@@ -40,6 +40,10 @@ describe('storageManager', () => {
         shell.mkdir(paths.testsTmpPath);
         shell.cp('-rf', paths.fixtures.storages, paths.storagesPath);
 
+        // Make the files for port 57214 the newest.
+        fs.utimesSync(path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
+        fs.utimesSync(path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage-journal'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
+        fs.utimesSync(path.join(paths.storagesPath, 'IndexedDB', 'http_127.0.0.1_57214.indexeddb.leveldb'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
     });
 
     afterEach(() => {
@@ -58,7 +62,7 @@ describe('storageManager', () => {
                 }
             });
 
-            storageManager.manage(57207);
+            return storageManager.manage(57207);
 
         });
     });

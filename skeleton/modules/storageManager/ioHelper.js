@@ -31,8 +31,10 @@ export function rimrafPromisfied(path) {
     return new Promise((resolve, reject) => {
         rimraf(path, {}, (error) => {
             if (error) {
+                console.log('reject', error);
                 reject(error);
             } else {
+                console.log('deleted', path);
                 resolve();
             }
         });
@@ -45,6 +47,7 @@ export function removePaths(paths = [], deleteFunction) {
         if (fs.existsSync(filePath)) {
             rimrafPromises.push(deleteFunction(filePath));
         } else {
+            console.log('not exists', filePath);
             rimrafPromises.push(Promise.resolve());
         }
     });

@@ -4,7 +4,7 @@ import fs from 'fs-plus';
 import fse from 'fs-extra';
 import path from 'path';
 import rimraf from 'rimraf';
-import { findNewestFileOrDirectory } from './storageManager/ioHelper';
+import { findNewestFileOrDirectory, removePaths, rimrafPromisfied } from './storageManager/ioHelper';
 
 class Storage {
     constructor(dir) {
@@ -72,10 +72,18 @@ export default class StorageManager {
 
         return new Promise((resolve, reject) => {
             const { entries, newest } = findNewestFileOrDirectory(storage.path, storage.entryFilter);
-            console.log(newest);
+            console.log('newest', newest);
 
-            const targetPaths = this.targetPaths.map(path => path(port));
-            console.log(targetPaths);
+            const targetPaths = storage.pathGenerators.map(pathGenerator => path.join(storage.path, pathGenerator(port)));
+            console.log('targetPaths', targetPaths);
+
+            removePaths(targetPaths, rimrafPromisfied)
+                .catch((error) => {
+                    console.log(error);
+                })
+                .then(() => {
+                    resolve();
+                });
 
             /*
             this.removeFilesIfPresent(involvedFiles.slice(0, 2))
@@ -88,7 +96,7 @@ export default class StorageManager {
                 resolve();
                 });
                 */
-            resolve();
+
         });
     }
 }
