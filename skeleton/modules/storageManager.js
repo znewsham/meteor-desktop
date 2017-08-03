@@ -4,7 +4,7 @@ import fs from 'fs-plus';
 import fse from 'fs-extra';
 import path from 'path';
 import rimraf from 'rimraf';
-import { findNewestFileOrDirectory, removePaths, rimrafPromisfied } from './storageManager/ioHelper';
+import { findNewestFileOrDirectory, removePaths, rimrafPromisfied, ioOperationWithRetries, batchIoOperationWithRetries } from './storageManager/ioHelper';
 
 class Storage {
     constructor(dir) {
@@ -59,7 +59,7 @@ export default class StorageManager {
         this.portMatcher = /(?:\.\d+)_(\d+)/g;
     }
 
-    manage(port, lastPort = null) {
+    manage(port, lastPort) {
         const promises = [];
         this.storages.forEach(storage => {
             promises.push(this.manageSingleStorage(storage, port));
@@ -74,28 +74,48 @@ export default class StorageManager {
             const { entries, newest } = findNewestFileOrDirectory(storage.path, storage.entryFilter);
             console.log('newest', newest);
 
+            if (newest === null) {
+                return resolve();
+            }
+
+            const portMatcherResult = this.portMatcher.exec(newest);
+            this.portMatcher.lastIndex = 0;
+            const newestPort = portMatcherResult[1];
+
+            // If the newest data are already for the port we want to use then we are fine, no need
+            // to make any changes. This should be the normal scenario.
+            if (newestPort === port) {
+                return resolve();
+            }
+
             const targetPaths = storage.pathGenerators.map(pathGenerator => path.join(storage.path, pathGenerator(port)));
             console.log('targetPaths', targetPaths);
+
+
+
+            const sourcePaths = storage.pathGenerators.map(pathGenerator => path.join(storage.path, pathGenerator(newestPort)));
+
+            const moveArguments = [];
+            sourcePaths.forEach((sourcePath, index) => {
+                moveArguments.push([sourcePath, targetPaths[index]]);
+            });
+            console.log(moveArguments);
 
             removePaths(targetPaths, rimrafPromisfied)
                 .catch((error) => {
                     console.log(error);
                 })
                 .then(() => {
-                    resolve();
-                });
+                    return batchIoOperationWithRetries('move', undefined, undefined, ioOperationWithRetries, moveArguments);
 
-            /*
-            this.removeFilesIfPresent(involvedFiles.slice(0, 2))
-                .catch((error) => {
-                    this.log.error('could not delete old local storage file, aborting, the' +
-                        ` storage may be outdated: ${error}`);
-                    throw new Error('skip');
                 })
+            .catch((error) => {
+                console.log(error);
+            })
                 .then(() => {
-                resolve();
+                    resolve();
+
                 });
-                */
 
         });
     }

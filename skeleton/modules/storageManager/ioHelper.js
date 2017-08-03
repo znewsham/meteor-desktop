@@ -62,6 +62,7 @@ export function ioOperationWithRetries(operation, maxRetries = 5, delayMs = 100,
     let retries = 0;
     return new Promise((resolve, reject) => {
         function io() {
+            console.log('operation', operation, 'args', ...args);
             fsExtra[operation](...args)
                 .then(() => {
                     resolve(true);
