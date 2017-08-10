@@ -56,7 +56,7 @@ export default class StorageManager {
 
         eventsBus.on('beforeLoadUrl', (port, lastPort = null) => this.manage(port, lastPort));
 
-        this.portMatcher = /(?:\.\d+)_(\d+)/g;
+        this.portMatcher = /\.\d+_(\d+)/g;
     }
 
     manage(port, lastPort) {
@@ -91,31 +91,36 @@ export default class StorageManager {
             const targetPaths = storage.pathGenerators.map(pathGenerator => path.join(storage.path, pathGenerator(port)));
             console.log('targetPaths', targetPaths);
 
+            const newestPaths = storage.pathGenerators.map(pathGenerator => path.join(storage.path, pathGenerator(newestPort)));
 
-
-            const sourcePaths = storage.pathGenerators.map(pathGenerator => path.join(storage.path, pathGenerator(newestPort)));
-
-            const moveArguments = [];
-            sourcePaths.forEach((sourcePath, index) => {
-                moveArguments.push([sourcePath, targetPaths[index]]);
+            const pathPairs = newestPaths.map((path, index) => {
+                return [path, targetPaths[index]];
             });
-            console.log(moveArguments);
+            console.log(pathPairs);
+
 
             removePaths(targetPaths, rimrafPromisfied)
                 .catch((error) => {
                     console.log(error);
                 })
-                .then(() => {
-                    return batchIoOperationWithRetries('move', undefined, undefined, ioOperationWithRetries, moveArguments);
-
-                })
-            .catch((error) => {
-                console.log(error);
-            })
-                .then(() => {
-                    resolve();
-
+                .then(
+                    () => batchIoOperationWithRetries('move', undefined, undefined, ioOperationWithRetries, pathPairs)
+                )
+                .catch((error) => {
+                    console.log(error);
                 });
+
+            /*
+            this.removeFilesIfPresent(involvedFiles.slice(0, 2))
+                .catch((error) => {
+                    this.log.error('could not delete old local storage file, aborting, the' +
+                        ` storage may be outdated: ${error}`);
+                    throw new Error('skip');
+                })
+                .then(() => {
+                resolve();
+                });
+                */
 
         });
     }
