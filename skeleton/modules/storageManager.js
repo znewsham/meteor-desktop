@@ -59,7 +59,7 @@ export default class StorageManager {
         this.portMatcher = /\.\d+_(\d+)/g;
     }
 
-    manage(port, lastPort) {
+    manage(port, lastPort = null) {
         const promises = [];
         this.storages.forEach(storage => {
             promises.push(this.manageSingleStorage(storage, port));
@@ -96,8 +96,7 @@ export default class StorageManager {
             const pathPairs = newestPaths.map((path, index) => {
                 return [path, targetPaths[index]];
             });
-            console.log(pathPairs);
-
+            console.log('pathPairs', pathPairs);
 
             removePaths(targetPaths, rimrafPromisfied)
                 .catch((error) => {
@@ -108,20 +107,30 @@ export default class StorageManager {
                 )
                 .catch((error) => {
                     console.log(error);
-                });
-
-            /*
-            this.removeFilesIfPresent(involvedFiles.slice(0, 2))
-                .catch((error) => {
-                    this.log.error('could not delete old local storage file, aborting, the' +
-                        ` storage may be outdated: ${error}`);
-                    throw new Error('skip');
                 })
                 .then(() => {
-                resolve();
+                    const others = this.listOthers(port, newestPort, entries, storage);
+                    console.log('others', others);
+                    return removePaths(others, rimrafPromisfied);
+                })
+                .then(() => {
+                    resolve();
                 });
-                */
-
         });
     }
+
+    /**
+     * Deletes all local storage files that are not for the current and last port.
+     *
+     * @param {number} port     - port on which the meteor app is going to be served
+     * @param {Array} files     - array with local storage files
+     */
+    listOthers(port, newestPort, files, storage) {
+        return files
+            .filter(file =>
+                file.name.startsWith(storage.entryPrefix) && (!~file.name.indexOf(port) &&
+                !~file.name.indexOf(newestPort)))
+            .map(file => path.join(storage.path, file.name));
+    }
+
 }

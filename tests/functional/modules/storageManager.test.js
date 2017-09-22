@@ -9,6 +9,7 @@ import mockery from 'mockery';
 
 import paths from '../../helpers/paths';
 import { getFakeLogger } from '../../helpers/meteorDesktop';
+import crypto from 'crypto';
 
 chai.use(sinonChai);
 chai.use(dirty);
@@ -16,6 +17,15 @@ const { describe, it } = global;
 const { expect } = chai;
 
 const Electron = { app: { getPath: () => paths.storagesPath }};
+
+function getFileHash(file) {
+    const hash = crypto.createHash('sha1');
+    hash.update(fs.readFileSync(file));
+    return hash.digest('hex');
+}
+
+let localStorageTargetHash, localStorageTarget;
+let indexedDBTargetHash;
 
 let StorageManager;
 describe('storageManager', () => {
@@ -44,6 +54,10 @@ describe('storageManager', () => {
         fs.utimesSync(path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
         fs.utimesSync(path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage-journal'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
         fs.utimesSync(path.join(paths.storagesPath, 'IndexedDB', 'http_127.0.0.1_57214.indexeddb.leveldb'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
+
+        localStorageTarget = path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage');
+        localStorageTargetHash = getFileHash(localStorageTarget);
+        indexedDBTargetHash = getFileHash(path.join(paths.storagesPath, 'IndexedDB', 'http_127.0.0.1_57214.indexeddb.leveldb', 'MANIFEST-000001'));
     });
 
     afterEach(() => {
@@ -62,7 +76,10 @@ describe('storageManager', () => {
                 }
             });
 
-            return storageManager.manage(57207);
+            storageManager.manage(57207).then(() => {
+                console.log(localStorageTargetHash, getFileHash(localStorageTarget));
+            });
+
 
         });
     });
