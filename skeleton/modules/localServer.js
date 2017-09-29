@@ -144,9 +144,13 @@ export default class LocalServer {
         function AssetHandler(req, res, next) {
             const parsedUrl = url.parse(req.url);
 
+
+            console.log('internal server', parsedUrl.pathname);
+
             // Check if we have an asset for that url defined.
             /** @type {Asset} */
             const asset = assetBundle.assetForUrlPath(parsedUrl.pathname);
+
 
             return asset ?
                 send(req, encodeURIComponent(asset.getFile()), { etag: false, cacheControl: false })
@@ -362,7 +366,7 @@ export default class LocalServer {
      * @returns {null|number}
      */
     loadPort() {
-        return null;
+        //return null;
         let port = null;
         try {
             port = parseInt(fs.readFileSync(this.portFilePath, this.port), 10);

@@ -82,9 +82,11 @@ export default class StorageManager {
             this.portMatcher.lastIndex = 0;
             const newestPort = portMatcherResult[1];
 
+
+
             // If the newest data are already for the port we want to use then we are fine, no need
             // to make any changes. This should be the normal scenario.
-            if (newestPort === port) {
+            if (parseInt(newestPort, 10) === port) {
                 return resolve();
             }
 
@@ -101,17 +103,23 @@ export default class StorageManager {
             removePaths(targetPaths, rimrafPromisfied)
                 .catch((error) => {
                     console.log(error);
+                    throw new Error('first');
                 })
                 .then(
                     () => batchIoOperationWithRetries('move', undefined, undefined, ioOperationWithRetries, pathPairs)
                 )
                 .catch((error) => {
                     console.log(error);
+                    throw new Error('second');
                 })
                 .then(() => {
                     const others = this.listOthers(port, newestPort, entries, storage);
                     console.log('others', others);
                     return removePaths(others, rimrafPromisfied);
+                })
+                .catch((error) => {
+                    console.log(error);
+                    throw new Error('third');
                 })
                 .then(() => {
                     resolve();

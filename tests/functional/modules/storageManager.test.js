@@ -10,6 +10,7 @@ import mockery from 'mockery';
 import paths from '../../helpers/paths';
 import { getFakeLogger } from '../../helpers/meteorDesktop';
 import crypto from 'crypto';
+//import level from 'level';
 
 chai.use(sinonChai);
 chai.use(dirty);
@@ -24,7 +25,11 @@ function getFileHash(file) {
     return hash.digest('hex');
 }
 
-let localStorageTargetHash, localStorageTarget;
+function getLocalStoragePath(port) {
+    return path.join(paths.storagesPath, 'Local Storage', `http_127.0.0.1_${port}.localstorage`);
+}
+
+let localStorageSourceHash, localStorageSource;
 let indexedDBTargetHash;
 
 let StorageManager;
@@ -55,9 +60,13 @@ describe('storageManager', () => {
         fs.utimesSync(path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage-journal'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
         fs.utimesSync(path.join(paths.storagesPath, 'IndexedDB', 'http_127.0.0.1_57214.indexeddb.leveldb'), (Date.now() / 1000) + 100, (Date.now() / 1000) + 100);
 
-        localStorageTarget = path.join(paths.storagesPath, 'Local Storage', 'http_127.0.0.1_57214.localstorage');
-        localStorageTargetHash = getFileHash(localStorageTarget);
+        localStorageSource = getLocalStoragePath(57214);
+        localStorageSourceHash = getFileHash(localStorageSource);
         indexedDBTargetHash = getFileHash(path.join(paths.storagesPath, 'IndexedDB', 'http_127.0.0.1_57214.indexeddb.leveldb', 'MANIFEST-000001'));
+
+
+        //const db = level(path.join(paths.storagesPath, 'IndexedDB', 'http_127.0.0.1_57208.indexeddb.leveldb'));
+
     });
 
     afterEach(() => {
@@ -65,7 +74,7 @@ describe('storageManager', () => {
     });
 
     describe('#storageManager', () => {
-        it('test', () => {
+        it('test', (done) => {
             const storageManager = new StorageManager({
                 log: getFakeLogger(true, true),
                 appSettings: {},
@@ -77,7 +86,9 @@ describe('storageManager', () => {
             });
 
             storageManager.manage(57207).then(() => {
-                console.log(localStorageTargetHash, getFileHash(localStorageTarget));
+                console.log('ehehehe');
+                console.log(localStorageSourceHash, getFileHash(getLocalStoragePath(57207)));
+                done();
             });
 
 

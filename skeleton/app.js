@@ -47,6 +47,8 @@ export default class App {
             this.l.debug(`skeleton version ${this.settings.meteorDesktopVersion}`);
         }
 
+        electron.protocol.registerStandardSchemes(['meteor', 'http', 'https']);
+
         // To make desktop.asar's downloaded through HCP work, we need to provide it a path to
         // node_modules.
         const nodeModulesPath = [__dirname, 'node_modules'];
@@ -561,12 +563,20 @@ export default class App {
             this.handleAppStartup(false);
         });
 
+        electron.protocol.registerHttpProtocol('meteor', (request, callback) => {
+            const url = request.url.substr('meteor://desktop'.length);
+            console.log(url);
+            callback({ method: request.method, referrer: request.referrer, url: `http://127.0.0.1:${port}${url}` });
+        }, e => { if (e) { console.log(e); } });
+
+
         this.emitAsync('beforeLoadUrl', port, this.currentPort)
             .catch(() => {
                 this.l.warning('some of beforeLoadUrl event listeners have failed');
             })
             .then(() => {
-                this.webContents.loadURL(`http://127.0.0.1:${port}/`);
+                this.webContents.loadURL(`meteor://desktop`);
+                // this.webContents.loadURL(`http://127.0.0.1:${port}/`);
             });
     }
 
