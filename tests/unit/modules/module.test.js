@@ -6,6 +6,8 @@ import sinon from 'sinon';
 import mockery from 'mockery';
 import rewire from 'rewire';
 
+import mockerySettings from '../../helpers/mockerySettings';
+
 chai.use(sinonChai);
 chai.use(dirty);
 const { describe, it, before, after } = global;
@@ -19,10 +21,7 @@ let Module;
 describe('Module', () => {
     before(() => {
         mockery.registerMock('electron', Electron);
-        mockery.enable({
-            warnOnReplace: false,
-            warnOnUnregistered: false
-        });
+        mockery.enable(mockerySettings);
         Module = rewire('../../../skeleton/modules/module.js');
     });
 
