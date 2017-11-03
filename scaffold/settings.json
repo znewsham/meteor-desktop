@@ -27,6 +27,18 @@
             "windowSettings": {
                 "width": 800,
                 "height": 600
+            },
+            "updateScreen": true,
+            "updateScreenSettings": {
+                "imagePath": "updating.gif",
+                "windowSettings": {
+                    "width": 400,
+                    "height": 300
+                },
+                "clickThrough": false,
+                "style": {
+                    "background-size": "auto"
+                }
             }
         },
         "meteor-desktop-localstorage": "0.0.11"
