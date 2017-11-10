@@ -46,7 +46,7 @@ export default class StorageMigration {
             new LocalStorage(),
         ];
 
-        eventsBus.on('beforeLoadUrl', () => this.manage());
+        //eventsBus.on('beforeLoadUrl', () => this.manage());
 
         this.portMatcher = /\.\d+_(\d+)/g;
     }

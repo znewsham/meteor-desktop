@@ -14,8 +14,10 @@ import DesktopPathResolver from './desktopPathResolver';
 import WindowSettings from './windowSettings';
 import Squirrel from './squirrel';
 
-const { app, BrowserWindow, dialog } = electron;
+const { app, BrowserWindow, session, dialog } = electron;
 const { join } = path;
+
+electron.protocol.registerStandardSchemes(['meteor']);
 
 /**
  * This is the main app which is a skeleton for the whole integration.
@@ -47,7 +49,6 @@ export default class App {
             this.l.debug(`skeleton version ${this.settings.meteorDesktopVersion}`);
         }
 
-        electron.protocol.registerStandardSchemes(['meteor', 'http', 'https']);
 
         // To make desktop.asar's downloaded through HCP work, we need to provide it a path to
         // node_modules.
@@ -105,6 +106,13 @@ export default class App {
 
         this.app.on('ready', this.onReady.bind(this));
         this.app.on('window-all-closed', () => this.app.quit());
+        this.app.on('before-quit', (event) => {
+            console.log('quit');
+            //event.preventDefault();
+        });
+        this.app.on('gpu-process-crashed', (event) => {
+            console.log('gpu kaput');
+        });
     }
 
     /**
@@ -144,7 +152,7 @@ export default class App {
             if (this.app && this.app.quit) {
                 this.app.quit();
             }
-            process.exit(1);
+            //process.exit(1);
         }
     }
 
@@ -502,11 +510,14 @@ export default class App {
      * @param {number} port - port on which our local server is listening
      */
     onServerReady(port) {
+        this.mainSession = session.fromPartition('main');
+
         const windowSettings = {
             width: 800,
             height: 600,
             webPreferences: {},
-            show: false
+            show: true,
+            session: this.mainSession
         };
 
         if (process.env.METEOR_DESKTOP_SHOW_MAIN_WINDOW_ON_STARTUP) {
@@ -533,8 +544,9 @@ export default class App {
         this.webContents = this.window.webContents;
 
         if (this.settings.devtron && !this.isProduction()) {
-            // Print some fancy status to the console if in development.
-            this.webContents.executeJavaScript(`
+            this.webContents.on('did-finish-load', () => {
+                // Print some fancy status to the console if in development.
+                this.webContents.executeJavaScript(`
                 console.log('%c   meteor-desktop   ',
                 \`background:linear-gradient(#47848F,#DE4B4B);border:1px solid #3E0E02;
                 color:#fff;display:block;text-shadow:0 3px 0 rgba(0,0,0,0.5);
@@ -542,14 +554,25 @@ export default class App {
                 0 -13px 5px -10px rgba(255,255,255,0.4) inset;
                 line-height:20px;text-align:center;font-weight:700;font-size:20px\`);
                 console.log(\`%cdesktop version: ${this.settings.desktopVersion}\\n` +
-                `desktop compatibility version: ${this.settings.compatibilityVersion}\\n` +
-                'meteor bundle version:' +
-                ` ${this.modules.autoupdate.currentAssetBundle.getVersion()}\\n\`` +
-                ', \'font-size: 9px;color:#222\');'
-            );
+                    `desktop compatibility version: ${this.settings.compatibilityVersion}\\n` +
+                    'meteor bundle version:' +
+                    ` ${this.modules.autoupdate.currentAssetBundle.getVersion()}\\n\`` +
+                    ', \'font-size: 9px;color:#222\');'
+                );
+            });
         }
 
         this.emit('windowCreated', this.window);
+
+        this.webContents.on('crashed', (event) => {
+            console.log('crashed');
+        });
+        this.webContents.on('plugin-crashed', (event, name, version) => {
+            console.log('plugin-crashed', name, version);
+        });
+        this.webContents.on('destroyed', (event) => {
+            console.log('destroyed');
+        });
 
         // Here we are catching reloads triggered by hot code push.
         this.webContents.on('will-navigate', (event, url) => {
@@ -568,28 +591,42 @@ export default class App {
             this.handleAppStartup(false);
         });
 
-        electron.protocol.registerHttpProtocol('meteor', (request, callback) => {
+
+
+        this.webContents.session.protocol.registerHttpProtocol('meteor', (request, callback) => {
             const url = request.url.substr('meteor://desktop'.length);
-            callback(
+            console.log(url, 'ref', request.referrer);
+            setTimeout(() => callback(
                 {
                     method: request.method,
                     referrer: request.referrer,
-                    url: `http://127.0.0.1:${port}${url}`
+                    url: `http://127.0.0.1:${port}${url}`,
                 }
-            );
+            ), 10);
         }, (e) => {
             // TODO: handle failure!
-            if (e) { console.log(e); }
+            if (e) {
+                console.log('Register failure', e);
+            }
+            console.log('protocol registered');
+
+            this.l.debug('opening meteor://desktop');
+            setTimeout(() => {
+                this.webContents.loadURL('meteor://desktop');
+                //this.webContents.loadURL(`file://${__dirname}/test.html`);
+            }, 6000);
+
+
+            /*this.emitAsync('beforeLoadUrl', port, this.currentPort)
+                .catch(() => {
+                    this.l.warning('some of beforeLoadUrl event listeners have failed');
+                })
+                .then(() => {
+                });*/
+
         });
 
 
-        this.emitAsync('beforeLoadUrl', port, this.currentPort)
-            .catch(() => {
-                this.l.warning('some of beforeLoadUrl event listeners have failed');
-            })
-            .then(() => {
-                this.webContents.loadURL(`meteor://desktop`);
-            });
     }
 
     handleAppStartup(startupDidCompleteEvent) {

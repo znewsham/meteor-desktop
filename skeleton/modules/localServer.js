@@ -143,7 +143,7 @@ export default class LocalServer {
          */
         function AssetHandler(req, res, next) {
             const parsedUrl = url.parse(req.url);
-
+            console.log('path', parsedUrl.path);
             // Check if we have an asset for that url defined.
             /** @type {Asset} */
             const asset = assetBundle.assetForUrlPath(parsedUrl.pathname);
@@ -151,9 +151,11 @@ export default class LocalServer {
             return asset ?
                 send(req, encodeURIComponent(asset.getFile()), { etag: false, cacheControl: false })
                     .on('file', () =>
+                        console.log('inside send', req.url),
                         addSourceMapHeader(asset, res),
                         addETagHeader(asset, res),
-                        addCacheHeader(asset, res, req.url)
+                        addCacheHeader(asset, res, req.url),
+                        console.log('outside send', req.url)
                     )
                     .pipe(res)
                 :
