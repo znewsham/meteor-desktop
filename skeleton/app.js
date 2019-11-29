@@ -638,7 +638,7 @@ export default class App {
 
                     this.l.debug('opening meteor://desktop');
                     setTimeout(() => {
-                        this.webContents.loadURL('meteor://desktop');
+                        this.webContents.loadURL(this.settings.mainWindowUrl || 'meteor://desktop');
                     }, 100);
                 }
             );
