@@ -16,7 +16,9 @@ import Squirrel from './squirrel'; // DEPRECATED
 const { app, BrowserWindow, dialog } = electron;
 const { join } = path;
 
-electron.protocol.registerStandardSchemes(['meteor'], { secure: true });
+electron.protocol.registerSchemesAsPrivileged([
+    { scheme: 'meteor', privileges: { standard: true, secure: true } }
+]);
 
 /**
  * This is the main app which is a skeleton for the whole integration.
@@ -565,9 +567,9 @@ export default class App {
         // this way.
         this.emit('windowSettings', windowSettings);
 
-        windowSettings.webPreferences.nodeIntegration = false; // node integration must to be off
+        windowSettings.webPreferences.nodeIntegration = this.settings.mainWindowUrl ? true : false; // node integration must to be off
         windowSettings.webPreferences.preload = join(__dirname, 'preload.js');
-
+        windowSettings.webPreferences.webviewTag = this.settings.mainWindowUrl ? true : false;
         this.currentPort = port;
 
         this.window = new BrowserWindow(windowSettings);
